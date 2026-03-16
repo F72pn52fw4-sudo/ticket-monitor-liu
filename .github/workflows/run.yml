@@ -1,7 +1,7 @@
-name: 海航PLUS199特价票全自动监控
+name: 海航PLUS199特价票API监控
 on:
   schedule:
-    - cron: '*/8 * * * *'
+    - cron: '*/8 * * * *'  # 每8分钟查一次
   workflow_dispatch:
 
 jobs:
@@ -9,24 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      # 安装 Chromium 并强制创建软链接（解决文件已存在问题）
-      - name: 安装Chrome并配置路径
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser chromium-chromedriver
-          sudo ln -sf /usr/bin/chromium-browser /usr/bin/google-chrome  # -sf 强制覆盖已存在的链接
-          
       - name: 设置Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          
       - name: 安装依赖
-        run: pip install selenium requests
-          
+        run: pip install requests
       - name: 启动监控
         env:
           PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
-          HNA_SESSION: ${{ secrets.HNA_SESSION }}
-        run: python monitor.py
+          JSESSIONID: ${{ secrets.HNA_SESSION }}  # 这里依然用你之前的HNA_SESSION密钥
+        run: python api_monitor.py
