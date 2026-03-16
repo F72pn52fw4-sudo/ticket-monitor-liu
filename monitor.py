@@ -7,28 +7,23 @@ import requests
 import time
 import os
 
-# 自动读取 GitHub 密钥
-USER = os.getenv("HNA_ACCOUNT")
-PWD = os.getenv("HNA_PASSWORD")
-TOKEN = os.getenv("PUSHPLUS_TOKEN")
+# ===================== 自动配置 =====================
+PUSHPLUS_TOKEN = os.getenv("PUSHPLUS_TOKEN")
+HNA_SESSION = os.getenv("HNA_SESSION")
 
-# 航班查询配置
 FROM = "长沙"
 TO = "北京"
 DATE = "2026-04-06"
+# =====================================================
 
-# PushPlus 微信推送
 def send(title, content):
     try:
         requests.post("http://www.pushplus.plus/send", json={
-            "token": TOKEN,
-            "title": title,
-            "content": content
+            "token": PUSHPLUS_TOKEN, "title": title, "content": content
         })
     except:
         pass
 
-# 主监控程序
 def monitor():
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")
@@ -39,29 +34,32 @@ def monitor():
 
     driver = webdriver.Chrome(options=chrome_options)
     driver.set_page_load_timeout(30)
-    wait = WebDriverWait(driver, 25)
+    wait = WebDriverWait(driver, 20)
 
     try:
-        print("✅ 正在打开海南航空官网...")
+        print("✅ 打开海航官网...")
         driver.get("https://www.hnair.com/")
-        time.sleep(3)
-
-        # 登录
-        print("🔐 准备登录...")
-        wait.until(EC.element_to_be_clickable((By.XPATH, "//*[text()='登录']"))).click()
         time.sleep(2)
 
-        driver.find_element(By.ID, "username").send_keys(USER)
-        driver.find_element(By.ID, "password").send_keys(PWD)
-        driver.find_element(By.XPATH, "//button[text()='登录']").click()
-        time.sleep(7)
+        # ================ 核心：直接注入登录态，跳过验证码 ================
+        driver.add_cookie({
+            "name": "JSESSIONID",
+            "value": HNA_SESSION,
+            "domain": ".www.hnair.com",
+            "path": "/",
+            "secure": True
+        })
+
+        print("🔐 已使用登录态，跳过验证码登录成功！")
+        driver.refresh()
+        time.sleep(5)
 
         # 进入国内机票
-        print("✈️ 进入机票查询页面...")
+        print("✈️ 进入查询页面...")
         wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "国内机票"))).click()
         time.sleep(3)
 
-        # 填写出发地、目的地、日期
+        # 填写行程
         dep = driver.find_element(By.ID, "depCity")
         dep.clear()
         dep.send_keys(FROM)
@@ -76,14 +74,14 @@ def monitor():
         time.sleep(2)
 
         # 查询
-        print(f"🔍 查询：{FROM}→{TO} {DATE}")
         driver.find_element(By.XPATH, "//button[text()='查询']").click()
+        print(f"🔍 查询中：{FROM}→{TO} {DATE}")
         time.sleep(8)
 
-        # 判断是否有 199 特价票
+        # 判断特价票
         page = driver.page_source
         if "199" in page and "海航PLUS" in page:
-            msg = f"🎉 发现特价票！\n{FROM}→{TO}\n日期：{DATE}\n价格：海航PLUS 199元"
+            msg = f"🎉 特价票已放出！\n{FROM}→{TO}\n日期：{DATE}\n价格：199元"
             send("海航特价机票提醒", msg)
             print("✅ 查到特价票！已推送微信！")
         else:
