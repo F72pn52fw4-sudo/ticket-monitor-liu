@@ -1,0 +1,22 @@
+name: 机票监控定时任务
+on:
+  schedule:
+    - cron: '00 2 * * *'   # 每天 北京时间 10:00
+    - cron: '10 2 * * *'   # 每天 北京时间 10:10
+    - cron: '20 2 * * *'   # 每天 北京时间 10:20
+    - cron: '30 2 * * *'   # 每天 北京时间 10:30
+  workflow_dispatch:      # 允许手动运行
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: 安装依赖
+        run: pip install requests
+      - name: 运行机票查询
+        run: python ticket.py
